@@ -13,13 +13,14 @@ const schema = yup.object({
 export type ChatInputValues = yup.InferType<typeof schema>;
 
 export const useChatInput = () => {
-  const { messages, setMessages, setStreamingContent } = use(ChatContext);
+  const { messages, setMessages, setStreamingContent, conversationId, setConversationId } = use(ChatContext);
   const { mutate, isPending } = useChatMutation({
     onSuccess: (content: string) => {
       setMessages((prev) => [...prev, { role: "assistant", content }]);
       setStreamingContent("");
     },
     onStreamingContentChange: setStreamingContent,
+    onConversationId: setConversationId,
   });
 
   const form = useForm<ChatInputValues>({
@@ -36,9 +37,9 @@ export const useChatInput = () => {
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
       form.reset();
-      mutate(updatedMessages);
+      mutate({ messages: updatedMessages, conversationId });
     },
-    [messages, setMessages, form, mutate],
+    [messages, setMessages, form, mutate, conversationId],
   );
 
   const handleSubmit = form.handleSubmit(onFormSubmit);

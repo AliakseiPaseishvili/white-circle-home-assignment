@@ -5,13 +5,22 @@ import { type ChatMessage } from "../context";
 type UseChatMutation = {
   onSuccess?: (content: string) => void;
   onStreamingContentChange: (content: string) => void;
+  onConversationId?: (id: string) => void;
 };
 
-export const useChatMutation = ({ onSuccess, onStreamingContentChange}: UseChatMutation) => {
+type MutationArgs = {
+  messages: ChatMessage[];
+  conversationId?: string | null;
+};
+
+export const useChatMutation = ({ onSuccess, onStreamingContentChange, onConversationId }: UseChatMutation) => {
 
   return useMutation({
-    mutationFn: async (messages: ChatMessage[]) => {
-      const response = await api.chat.post({ messages });
+    mutationFn: async ({ messages, conversationId }: MutationArgs) => {
+      const response = await api.chat.post({
+        messages,
+        ...(conversationId ? { conversationId } : {}),
+      });
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantContent = "";
@@ -25,7 +34,9 @@ export const useChatMutation = ({ onSuccess, onStreamingContentChange}: UseChatM
           for (const line of chunk.split("\n")) {
             if (!line.startsWith("data: ")) continue;
             const data = JSON.parse(line.slice(6));
-            if (
+            if (data.type === "conversation_id") {
+              onConversationId?.(data.id as string);
+            } else if (
               data.type === "content_block_delta" &&
               data.delta?.type === "text_delta"
             ) {
@@ -42,7 +53,7 @@ export const useChatMutation = ({ onSuccess, onStreamingContentChange}: UseChatM
       onStreamingContentChange("");
     },
     onSuccess: (assistantContent) => {
-     onSuccess?.(assistantContent);
+      onSuccess?.(assistantContent);
     },
   });
 };
