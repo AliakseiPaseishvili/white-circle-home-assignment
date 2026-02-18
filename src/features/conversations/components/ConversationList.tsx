@@ -1,17 +1,24 @@
 "use client";
 
-import { type FC, useEffect, useRef } from "react";
+import { type FC, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConversations } from "../hooks";
 import type { Conversation } from "@/lib/db";
 
 const ConversationItem: FC<{ conversation: Conversation }> = ({ conversation }) => {
   const updatedAt = new Date(conversation.updatedAt).toLocaleDateString();
+  const queryClient = useQueryClient();
+
+  const handleClick = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["conversation-messages", conversation.id] });
+  }, [queryClient, conversation.id]);
 
   return (
     <li>
       <Link
         href={`/conversations/${conversation.id}`}
+        onClick={handleClick}
         className="flex flex-col gap-1 rounded-md px-3 py-2 hover:bg-muted cursor-pointer transition-colors"
       >
         <span className="text-sm font-medium truncate">
