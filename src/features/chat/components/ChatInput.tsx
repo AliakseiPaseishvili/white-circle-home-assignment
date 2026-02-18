@@ -3,15 +3,10 @@
 import { FC, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useChatInput, type ChatInputValues } from "../hooks";
+import { useChatInput } from "../hooks";
 
-interface ChatInputProps {
-  onSubmit?: (values: ChatInputValues) => void;
-  isLoading?: boolean;
-}
-
-export const ChatInput: FC<ChatInputProps> = ({ onSubmit, isLoading }) => {
-  const { form, handleSubmit } = useChatInput(onSubmit);
+export const ChatInput: FC = () => {
+  const { form, handleSubmit, isLoading } = useChatInput();
 
   const {
     register,
