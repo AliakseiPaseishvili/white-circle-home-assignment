@@ -1,10 +1,5 @@
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
 type ChatPostBody = {
-  messages: ChatMessage[];
+  message: string;
   model?: string;
   max_tokens?: number;
   conversationId?: string;

@@ -1,10 +1,10 @@
 import { client } from "@/features/claude";
 import { db, conversations, messages } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
   const {
-    messages: chatMessages,
+    message,
     model = "claude-sonnet-4-6",
     max_tokens = 1024,
     conversationId: incomingConversationId,
@@ -19,16 +19,15 @@ export async function POST(request: Request) {
       .where(eq(conversations.id, incomingConversationId))
       .limit(1);
 
-    conversationId = existing?.id ?? (await createConversation());
+    conversationId = existing?.id ?? (await createConversation(message));
   } else {
-    conversationId = await createConversation();
+    conversationId = await createConversation(message);
   }
 
-  const userMessage = chatMessages[chatMessages.length - 1];
   await db.insert(messages).values({
     conversationId,
     role: "user",
-    content: userMessage.content,
+    content: message,
   });
 
   await db
@@ -36,10 +35,16 @@ export async function POST(request: Request) {
     .set({ updatedAt: new Date() })
     .where(eq(conversations.id, conversationId));
 
+  const history = await db
+    .select({ role: messages.role, content: messages.content })
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt));
+
   const stream = client.messages.stream({
     model,
     max_tokens,
-    messages: chatMessages,
+    messages: history,
   });
 
   const readableStream = new ReadableStream({
@@ -89,10 +94,14 @@ export async function POST(request: Request) {
   });
 }
 
-async function createConversation(): Promise<string> {
+function buildTitle(text: string): string {
+  return text.length > 50 ? `${text.slice(0, 47)}...` : text;
+}
+
+async function createConversation(firstMessage: string): Promise<string> {
   const [created] = await db
     .insert(conversations)
-    .values({})
+    .values({ title: buildTitle(firstMessage) })
     .returning({ id: conversations.id });
   return created.id;
 }

@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/api";
-import { type ChatMessage } from "../context";
 
 type UseChatMutation = {
   onSuccess?: (content: string) => void;
@@ -9,16 +8,16 @@ type UseChatMutation = {
 };
 
 type MutationArgs = {
-  messages: ChatMessage[];
+  message: string;
   conversationId?: string | null;
 };
 
 export const useChatMutation = ({ onSuccess, onStreamingContentChange, onConversationId }: UseChatMutation) => {
 
   return useMutation({
-    mutationFn: async ({ messages, conversationId }: MutationArgs) => {
+    mutationFn: async ({ message, conversationId }: MutationArgs) => {
       const response = await api.chat.post({
-        messages,
+        message,
         ...(conversationId ? { conversationId } : {}),
       });
       const reader = response.body?.getReader();
