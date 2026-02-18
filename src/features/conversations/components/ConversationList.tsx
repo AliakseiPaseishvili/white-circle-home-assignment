@@ -1,6 +1,7 @@
 "use client";
 
 import { type FC, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useConversations } from "../hooks";
 import type { Conversation } from "@/lib/db";
 
@@ -8,11 +9,16 @@ const ConversationItem: FC<{ conversation: Conversation }> = ({ conversation }) 
   const updatedAt = new Date(conversation.updatedAt).toLocaleDateString();
 
   return (
-    <li className="flex flex-col gap-1 rounded-md px-3 py-2 hover:bg-muted cursor-pointer transition-colors">
-      <span className="text-sm font-medium truncate">
-        {conversation.title ?? "Untitled"}
-      </span>
-      <span className="text-xs text-muted-foreground">{updatedAt}</span>
+    <li>
+      <Link
+        href={`/conversations/${conversation.id}`}
+        className="flex flex-col gap-1 rounded-md px-3 py-2 hover:bg-muted cursor-pointer transition-colors"
+      >
+        <span className="text-sm font-medium truncate">
+          {conversation.title ?? "Untitled"}
+        </span>
+        <span className="text-xs text-muted-foreground">{updatedAt}</span>
+      </Link>
     </li>
   );
 };

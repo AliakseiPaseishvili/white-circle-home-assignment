@@ -25,10 +25,14 @@ export const ChatContext = createContext<ChatContextValue>({
   setConversationId: () => {},
 });
 
-export const ChatProvider: FC<PropsWithChildren> = ({ children }) => {
+type ChatProviderProps = PropsWithChildren<{
+  initialConversationId?: string;
+}>;
+
+export const ChatProvider: FC<ChatProviderProps> = ({ children, initialConversationId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState("");
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId ?? null);
 
   return (
     <ChatContext.Provider
