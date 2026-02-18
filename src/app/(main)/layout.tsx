@@ -1,5 +1,6 @@
 import { FC, PropsWithChildren } from "react";
 import { ConversationList, NewConversationButton } from "@/features/conversations";
+import { ChatShell } from "./ChatShell";
 
 const MainLayout: FC<PropsWithChildren> = ({ children }) => {
   return (
@@ -9,7 +10,9 @@ const MainLayout: FC<PropsWithChildren> = ({ children }) => {
         <ConversationList />
       </aside>
       <div className="flex flex-1 flex-col overflow-hidden p-4">
-        {children}
+        <ChatShell />
+        {/* pages return null — satisfies Next.js layout contract */}
+        <div className="hidden">{children}</div>
       </div>
     </main>
   );

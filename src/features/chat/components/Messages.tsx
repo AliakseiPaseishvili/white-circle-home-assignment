@@ -1,20 +1,21 @@
 "use client";
 
-import { use, useEffect, useRef, FC, useMemo } from "react";
-import { ChatContext } from "@/features/chat/context/ChatContext";
-import { Markdown } from "@/components/ui/markdown";
+import { use, useEffect, useRef, useMemo, FC } from "react";
 import { cn } from "@/lib/utils";
-import { useConversationMessages } from "../hooks/use-conversation-messages";
+import { Markdown } from "@/components/ui/markdown";
+import { ChatContext } from "../context/ChatContext";
+import { useConversationMessages } from "@/features/conversations/hooks";
 
-export const ConversationMessages: FC<{ conversationId: string }> = ({ conversationId }) => {
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useConversationMessages(conversationId);
-  const { messages: newMessages, streamingContent } = use(ChatContext);
+export const Messages: FC = () => {
+  const { messages: newMessages, setMessages, streamingContent, conversationId } = use(ChatContext);
 
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const clearedForRef = useRef<string | null>(null);
 
-  // API returns newest-first; reverse pages and each page's data for chronological order
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useConversationMessages(conversationId);
+
   const historicalMessages = useMemo(
     () =>
       data?.pages
@@ -23,7 +24,6 @@ export const ConversationMessages: FC<{ conversationId: string }> = ({ conversat
     [data],
   );
 
-  // Intersection observer at the top to load older messages
   useEffect(() => {
     const sentinel = topSentinelRef.current;
     if (!sentinel) return;
@@ -41,20 +41,23 @@ export const ConversationMessages: FC<{ conversationId: string }> = ({ conversat
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  // Auto-scroll to bottom on new messages or streaming
+  useEffect(() => {
+    if (data && conversationId && clearedForRef.current !== conversationId) {
+      clearedForRef.current = conversationId;
+      setMessages([]);
+    }
+  }, [data, conversationId, setMessages]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [newMessages, streamingContent]);
-
-  if (isLoading) {
-    return <p className="px-3 py-2 text-sm text-muted-foreground">Loading messages...</p>;
-  }
 
   if (isError) {
     return <p className="px-3 py-2 text-sm text-destructive">Failed to load messages.</p>;
   }
 
-  const isEmpty = historicalMessages.length === 0 && newMessages.length === 0 && !streamingContent;
+  const isEmpty =
+    historicalMessages.length === 0 && newMessages.length === 0 && !streamingContent;
 
   return (
     <div className="flex flex-col gap-3">
@@ -64,8 +67,12 @@ export const ConversationMessages: FC<{ conversationId: string }> = ({ conversat
         <p className="px-3 py-2 text-sm text-muted-foreground">Loading older messages...</p>
       )}
 
-      {isEmpty && (
-        <p className="px-3 py-2 text-sm text-muted-foreground">No messages yet.</p>
+      {isLoading && !newMessages.length && (
+        <p className="px-3 py-2 text-sm text-muted-foreground">Loading messages...</p>
+      )}
+
+      {!isLoading && isEmpty && (
+        <p className="px-3 py-2 text-sm text-muted-foreground">Start a new conversation...</p>
       )}
 
       {historicalMessages.map((message) => (

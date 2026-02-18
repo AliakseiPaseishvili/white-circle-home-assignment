@@ -10,11 +10,12 @@ type MessagesPage = {
   totalPages: number;
 };
 
-export const useConversationMessages = (conversationId: string) => {
+export const useConversationMessages = (conversationId: string | null) => {
   return useInfiniteQuery<MessagesPage>({
     queryKey: ["conversation-messages", conversationId],
+    enabled: !!conversationId,
     queryFn: async ({ pageParam }) => {
-      const response = await api.conversations.messages(conversationId, { page: pageParam as number });
+      const response = await api.conversations.messages(conversationId!, { page: pageParam as number });
       if (!response.ok) throw new Error("Failed to fetch messages");
       return response.json();
     },
