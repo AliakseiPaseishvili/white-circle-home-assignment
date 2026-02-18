@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useChatInput } from "../hooks";
 
 export const ChatInput: FC = () => {
-  const { form, handleSubmit, isLoading } = useChatInput();
+  const { form, handleSubmit, isPending } = useChatInput();
 
   const {
     register,
@@ -29,7 +29,7 @@ export const ChatInput: FC = () => {
         <Textarea
           {...register("message")}
           onKeyDown={handleKeyDown}
-          disabled={isLoading}
+          disabled={isPending}
           placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
           rows={4}
           aria-invalid={!!errors.message}
@@ -40,10 +40,10 @@ export const ChatInput: FC = () => {
       </div>
       <Button
         type="submit"
-        disabled={!isValid || isLoading}
+        disabled={!isValid || isPending}
         className="self-end"
       >
-        {isLoading ? "Sending..." : "Send"}
+        {isPending ? "Sending..." : "Send"}
       </Button>
     </form>
   );
