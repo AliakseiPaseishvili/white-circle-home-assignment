@@ -14,15 +14,25 @@ const schema = yup.object({
 export type ChatInputValues = yup.InferType<typeof schema>;
 
 export const useChatInput = () => {
-  const { setMessages, setStreamingContent, conversationId, setConversationId } = use(ChatContext);
+  const {
+    setMessages,
+    setStreamingContent,
+    setStreamingPiiMapping,
+    conversationId,
+    setConversationId,
+  } = use(ChatContext);
   const queryClient = useQueryClient();
   const router = useRouter();
   const { mutate, isPending } = useChatMutation({
-    onSuccess: (content: string) => {
-      setMessages((prev) => [...prev, { role: "assistant", content }]);
+    onSuccess: ({ content, maskedContent, piiMapping }) => {
+      setMessages((prev) => [...prev, { role: "assistant", content, maskedContent, piiMapping }]);
       setStreamingContent("");
+      setStreamingPiiMapping({});
     },
     onStreamingContentChange: setStreamingContent,
+    onPiiMapping: (mapping) => {
+      setStreamingPiiMapping((prev) => ({ ...prev, ...mapping }));
+    },
     onConversationId: (id: string) => {
       setConversationId(id);
       if (!conversationId) {

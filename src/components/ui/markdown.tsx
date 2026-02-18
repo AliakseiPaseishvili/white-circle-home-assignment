@@ -1,14 +1,41 @@
 import { FC } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
 interface MarkdownProps {
   content: string;
   className?: string;
+  components?: Components;
 }
 
-export const Markdown: FC<MarkdownProps> = ({ content, className }) => {
+const builtInComponents: Components = {
+  table: ({ children }) => (
+    <div className="my-4 w-full overflow-x-auto rounded-md border border-border">
+      <table className="w-full text-sm">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-muted/60">{children}</thead>
+  ),
+  tbody: ({ children }) => (
+    <tbody className="divide-y divide-border">{children}</tbody>
+  ),
+  tr: ({ children }) => (
+    <tr className="transition-colors hover:bg-muted/40">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="px-4 py-2 text-left font-semibold text-foreground">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="px-4 py-2 text-muted-foreground">{children}</td>
+  ),
+  hr: () => <hr className="my-4 border-border" />,
+};
+
+export const Markdown: FC<MarkdownProps> = ({ content, className, components }) => {
   return (
     <div
       className={cn(
@@ -22,31 +49,7 @@ export const Markdown: FC<MarkdownProps> = ({ content, className }) => {
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        components={{
-          table: ({ children }) => (
-            <div className="my-4 w-full overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">{children}</table>
-            </div>
-          ),
-          thead: ({ children }) => (
-            <thead className="bg-muted/60">{children}</thead>
-          ),
-          tbody: ({ children }) => (
-            <tbody className="divide-y divide-border">{children}</tbody>
-          ),
-          tr: ({ children }) => (
-            <tr className="transition-colors hover:bg-muted/40">{children}</tr>
-          ),
-          th: ({ children }) => (
-            <th className="px-4 py-2 text-left font-semibold text-foreground">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="px-4 py-2 text-muted-foreground">{children}</td>
-          ),
-          hr: () => <hr className="my-4 border-border" />,
-        }}
+        components={{ ...builtInComponents, ...components }}
       >
         {content}
       </ReactMarkdown>

@@ -3,11 +3,12 @@
 import { use, useEffect, useRef, useMemo, FC } from "react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
+import { PiiText } from "./PiiText";
 import { ChatContext } from "../context/ChatContext";
 import { useConversationMessages } from "@/features/conversations/hooks";
 
 export const Messages: FC = () => {
-  const { messages: newMessages, setMessages, streamingContent, conversationId } = use(ChatContext);
+  const { messages: newMessages, setMessages, streamingContent, streamingPiiMapping, conversationId } = use(ChatContext);
 
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -102,16 +103,20 @@ export const Messages: FC = () => {
               : "self-start bg-muted text-muted-foreground",
           )}
         >
-          <Markdown
-            content={message.content}
-            className={message.role === "user" ? "prose-invert" : undefined}
-          />
+          {message.role === "assistant" && message.maskedContent ? (
+            <PiiText text={message.maskedContent} mapping={message.piiMapping ?? {}} />
+          ) : (
+            <Markdown
+              content={message.content}
+              className={message.role === "user" ? "prose-invert" : undefined}
+            />
+          )}
         </div>
       ))}
 
       {streamingContent && (
         <div className="max-w-[80%] self-start rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground">
-          <Markdown content={streamingContent} />
+          <PiiText text={streamingContent} mapping={streamingPiiMapping} />
           <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-current" />
         </div>
       )}

@@ -1,10 +1,18 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/api";
+import type { PiiMapping } from "../context/ChatContext";
+
+type MutationResult = {
+  content: string;
+  maskedContent?: string;
+  piiMapping: PiiMapping;
+};
 
 type UseChatMutation = {
-  onSuccess?: (content: string) => void;
+  onSuccess?: (result: MutationResult) => void;
   onStreamingContentChange: (content: string) => void;
   onConversationId?: (id: string) => void;
+  onPiiMapping?: (mapping: PiiMapping) => void;
 };
 
 type MutationArgs = {
@@ -12,17 +20,20 @@ type MutationArgs = {
   conversationId?: string | null;
 };
 
-export const useChatMutation = ({ onSuccess, onStreamingContentChange, onConversationId }: UseChatMutation) => {
+export const useChatMutation = ({ onSuccess, onStreamingContentChange, onConversationId, onPiiMapping }: UseChatMutation) => {
 
   return useMutation({
-    mutationFn: async ({ message, conversationId }: MutationArgs) => {
+    mutationFn: async ({ message, conversationId }: MutationArgs): Promise<MutationResult> => {
       const response = await api.chat.post({
         message,
         ...(conversationId ? { conversationId } : {}),
       });
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = "";
+      let streamingContent = "";
+      let piiMapping: PiiMapping = {};
+      let originalContent = "";
+      let maskedContent: string | undefined;
 
       if (reader) {
         while (true) {
@@ -39,20 +50,26 @@ export const useChatMutation = ({ onSuccess, onStreamingContentChange, onConvers
               data.type === "content_block_delta" &&
               data.delta?.type === "text_delta"
             ) {
-              assistantContent += data.delta.text;
-              onStreamingContentChange(assistantContent);
+              streamingContent += data.delta.text;
+              onStreamingContentChange(streamingContent);
+            } else if (data.type === "pii_mapping") {
+              piiMapping = { ...piiMapping, ...(data.mapping as PiiMapping) };
+              onPiiMapping?.(piiMapping);
+            } else if (data.type === "final_message") {
+              originalContent = data.originalContent as string;
+              maskedContent = data.maskedContent as string;
             }
           }
         }
       }
 
-      return assistantContent;
+      return { content: originalContent || streamingContent, maskedContent, piiMapping };
     },
     onMutate: () => {
       onStreamingContentChange("");
     },
-    onSuccess: (assistantContent) => {
-      onSuccess?.(assistantContent);
+    onSuccess: (result) => {
+      onSuccess?.(result);
     },
   });
 };

@@ -1,4 +1,4 @@
-import { client } from "@/features/claude";
+import { client, PiiMaskingBuffer } from "@/features/claude";
 import { db, conversations, messages } from "@/lib/db";
 import { asc, eq } from "drizzle-orm";
 
@@ -54,25 +54,62 @@ export async function POST(request: Request) {
       const idEvent = JSON.stringify({ type: "conversation_id", id: conversationId });
       controller.enqueue(encoder.encode(`data: ${idEvent}\n\n`));
 
-      let assistantContent = "";
+      const piiBuffer = new PiiMaskingBuffer();
+      let originalAssistantContent = "";
+      let maskedAssistantContent = "";
+
+      const flushBuffer = async () => {
+        const maskedChunk = await piiBuffer.flush();
+        maskedAssistantContent += maskedChunk;
+
+        if (maskedChunk) {
+          const maskedEvent = {
+            type: "content_block_delta",
+            delta: { type: "text_delta", text: maskedChunk },
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(maskedEvent)}\n\n`));
+        }
+
+        // Send the latest mapping so the client can reveal tokens
+        const mappingEvent = { type: "pii_mapping", mapping: piiBuffer.mapping };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(mappingEvent)}\n\n`));
+      };
 
       for await (const event of stream) {
         if (
           event.type === "content_block_delta" &&
           event.delta?.type === "text_delta"
         ) {
-          assistantContent += event.delta.text;
-        }
+          originalAssistantContent += event.delta.text;
+          piiBuffer.add(event.delta.text);
 
-        const data = JSON.stringify(event);
-        controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          if (piiBuffer.shouldFlush()) {
+            await flushBuffer();
+          }
+        } else {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        }
       }
 
-      if (assistantContent) {
+      // Flush any remaining buffered text
+      if (piiBuffer.hasContent) {
+        await flushBuffer();
+      }
+
+      if (originalAssistantContent) {
+        // Send both versions to the client so it can store them in state
+        const finalEvent = {
+          type: "final_message",
+          originalContent: originalAssistantContent,
+          maskedContent: maskedAssistantContent || originalAssistantContent,
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalEvent)}\n\n`));
+
+        // Persist the original (unmasked) content in the database
         await db.insert(messages).values({
           conversationId,
           role: "assistant",
-          content: assistantContent,
+          content: originalAssistantContent,
         });
 
         await db
